@@ -81,6 +81,7 @@ configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
 }
 
 dependencies {
+    implementation(group = "", name = "ledger-release", ext = "aar")
     implementation(libs.appcompat)
     implementation(libs.activity.compose)
     implementation(libs.activity.ktx)

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -46,86 +47,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import be.chvp.nanoledger.R
 import be.chvp.nanoledger.ui.theme.NanoLedgerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
+import libledger.Libledger.getBalancesYaml
 
 @AndroidEntryPoint
 class StatsActivity() : ComponentActivity() {
 
     private val preferencesViewModel: StatsViewModel by viewModels()
-
-
-    private fun extractBinary(context: Context) {
-        // Path to the destination binary
-        val binaryFile = File(context.filesDir, "ledger")
-
-        // Copy the binary from assets to the app's files directory
-        context.assets.open("ledger").use { input ->
-            binaryFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-
-        // Set executable permissions
-        try {
-            Runtime.getRuntime().exec("chmod 700 ${binaryFile.absolutePath}")
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun runLedgerCommand(context: Context, command: String): String {
-        val binaryFile = File(context.filesDir, "ledger")
-        if (binaryFile.canExecute()) {
-            println("Binary is executable")
-        } else {
-            println("Binary is NOT executable")
-        }
-        // Build the process
-        return try {
-            val process = Runtime.getRuntime().exec("ledger")
-            val out = process.inputStream.bufferedReader().readText()
-            process.waitFor()
-            println(out)
-           return out
-        } catch (e: Exception) {
-            println(e.message)
-            e.message ?: "Error executing command"
-        }
-    }
-
-
-
-    private fun executeTermuxCommand() {
-        val command = "termux-battery-status" // Example Termux API command
-        val intent = Intent("com.termux.service_execute").apply {
-            putExtra("com.termux.command", command)
-        }
-
-        try {
-            startActivityForResult(intent, REQUEST_CODE)
-        } catch (e: Exception) {
-            Toast.makeText(this, "Termux API not installed or accessible", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CODE) {
-            if (resultCode == RESULT_OK && data != null) {
-                val result = data.getStringExtra("com.termux.result")
-                Toast.makeText(this, "Result: $result", Toast.LENGTH_LONG).show()
-            } else {
-                Toast.makeText(this, "Failed to execute Termux command", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
 
     companion object {
         private const val REQUEST_CODE = 123
@@ -134,8 +71,6 @@ class StatsActivity() : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        extractBinary(applicationContext)
-        executeTermuxCommand()
 
         setContent {
             NanoLedgerTheme {
@@ -146,34 +81,55 @@ class StatsActivity() : ComponentActivity() {
                             .padding(contentPadding)
                             .verticalScroll(rememberScrollState()),
                     ) {
-                        val ledgerCommand by preferencesViewModel.ledgerCommand.observeAsState()
-                        var newLedgerCommand by remember { mutableStateOf(ledgerCommand ?: "") }
-                        var defaultLedgerCommandOpen by remember { mutableStateOf(false) }
-                        Setting(
-                            stringResource(R.string.ledger_command),
-                            ledgerCommand ?: "-V balance",
-                        ) {
-                            defaultLedgerCommandOpen = true
+//                        val ledgerCommand by preferencesViewModel.ledgerCommand.observeAsState()
+//                        var newLedgerCommand by remember { mutableStateOf(ledgerCommand ?: "") }
+//                        var defaultLedgerCommandOpen by remember { mutableStateOf(false) }
+//                        Setting(
+//                            stringResource(R.string.ledger_command),
+//                            ledgerCommand ?: "-V balance",
+//                        ) {
+//                            defaultLedgerCommandOpen = true
+//                        }
+
+                        var output by remember { mutableStateOf( "") }
+//                        SettingDialog(
+//                            defaultLedgerCommandOpen,
+//                            stringResource(R.string.change_ledger_command),
+//                            true,
+//                            {
+////                                output = runLedgerCommand(applicationContext, " " + "-f " + preferencesViewModel.fileUri
+////                                + " --price-db " + preferencesViewModel.priceFileUri + " " + newLedgerCommand)
+//                                val data = try {
+//                                    preferencesViewModel.fileUri.value?.let {
+//                                        contentResolver.openInputStream(it)?.use { inputStream ->
+//                                            inputStream.readBytes() // Read the content into a ByteArray
+//                                        }
+//                                    }
+//                                } catch (e: Exception) {
+//                                    e.printStackTrace()
+//                                    null
+//                                }
+//                                output = getBalancesYaml(data).toString(Charsets.UTF_8)
+//                                preferencesViewModel.storeLedgerCommand(newLedgerCommand)
+//                            },
+//                            { defaultLedgerCommandOpen = false },
+//                        ) {
+//                            OutlinedTextField(newLedgerCommand, { newLedgerCommand = it })
+//                        }
+                        val data = try {
+                            preferencesViewModel.fileUri.value?.let {
+                                contentResolver.openInputStream(it)?.use { inputStream ->
+                                    inputStream.readBytes() // Read the content into a ByteArray
+                                }
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            null
                         }
+                        output = getBalancesYaml(data).toString(Charsets.UTF_8)
 
-                        var output = ""
-                        SettingDialog(
-                            defaultLedgerCommandOpen,
-                            stringResource(R.string.change_ledger_command),
-                            true,
-                            {
-                                output = runLedgerCommand(applicationContext, " " + "-f " + preferencesViewModel.fileUri
-                                + " --price-db " + preferencesViewModel.priceFileUri + " " + newLedgerCommand)
-                                preferencesViewModel.storeLedgerCommand(newLedgerCommand)
-                            },
-                            { defaultLedgerCommandOpen = false },
-                        ) {
-                            OutlinedTextField(newLedgerCommand, { newLedgerCommand = it })
-
-                        }
-                        Text(output)
-
-
+//                        Toast.makeText(applicationContext, output, Toast.LENGTH_LONG).show()
+                        Text(output, fontSize = 20.sp)
                     }
                 }
             }

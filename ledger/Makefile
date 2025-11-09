@@ -50,5 +50,5 @@ $(AAR_PATH):
 	@touch $@
 
 ship:
-	@cp $(AAR_PATH) ../app/libs
+	@cp $(AAR_PATH) ../libs
 
