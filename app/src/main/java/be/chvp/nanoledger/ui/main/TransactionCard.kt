@@ -12,8 +12,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,6 +21,7 @@ import be.chvp.nanoledger.data.Transaction
 fun transactionHeader(t: Transaction): String {
     var res = t.date
     if (t.status != null) res += " ${t.status}"
+    if (t.code != null) res += " (${t.code})"
     res += " ${t.payee}"
     if (t.note != null) res += " | ${t.note}"
     return res
@@ -65,20 +64,33 @@ fun TransactionCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 for (p in transaction.postings) {
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            "  ${p.account}",
-                            softWrap = false,
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            p.amount?.original ?: "",
-                            softWrap = false,
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            modifier = Modifier.padding(start = 2.dp),
-                        )
+                    if (p.isNote()) {
+                        val trimmedNote = p.note!!.trim()
+                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "  $trimmedNote",
+                                softWrap = false,
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "  ${p.account}",
+                                softWrap = false,
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                p.amount?.original ?: "",
+                                softWrap = false,
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                modifier = Modifier.padding(start = 2.dp),
+                            )
+                        }
                     }
                 }
             }

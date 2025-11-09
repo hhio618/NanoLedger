@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
@@ -9,22 +11,27 @@ plugins {
 
 android {
     namespace = "be.chvp.nanoledger"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "be.chvp.nanoledger"
         minSdk = 21
-        targetSdk = 35
-        versionCode = 60400
-        versionName = "0.6.3"
+        targetSdk = 36
+        versionCode = 2025102101
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
         vectorDrawables {
             useSupportLibrary = true
         }
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "NanoLedger (Debug)")
+        }
         release {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -32,23 +39,32 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs +=
-            arrayOf(
-                "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            )
+
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
+        animationsDisabled = true
     }
+
+    kotlin {
+        compilerOptions {
+            optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
     lint {
         quiet = true
         disable.addAll(
             arrayOf(
                 "AndroidGradlePluginVersion",
                 "GradleDependency",
+                "HighAppVersionCode",
+                "MemberExtensionConflict",
                 "NewerVersionAvailable",
                 "ObsoleteLintCustomCheck",
                 "OldTargetApi",
@@ -61,10 +77,12 @@ android {
         textReport = true
         explainIssues = !project.hasProperty("isCI")
     }
+
     buildFeatures {
         compose = true
         viewBinding = true
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -99,9 +117,12 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.ktx)
     ksp(libs.hilt.compiler)
     testImplementation(kotlin("test"))
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
-    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.androidx.test.ui.automator)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestUtil(libs.androidx.test.orchestrator)
     debugImplementation(libs.compose.ui.test.manifest)
 }

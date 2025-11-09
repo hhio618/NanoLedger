@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardActions
@@ -47,7 +48,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -55,6 +55,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -92,11 +93,12 @@ class MainActivity : ComponentActivity() {
                 val error = latestReadError?.get()
                 if (error != null) {
                     Log.e("be.chvp.nanoledger", "Exception while reading file", error)
-                    Toast.makeText(
-                        context,
-                        readErrorMessage,
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    Toast
+                        .makeText(
+                            context,
+                            readErrorMessage,
+                            Toast.LENGTH_LONG,
+                        ).show()
                 }
             }
 
@@ -106,11 +108,12 @@ class MainActivity : ComponentActivity() {
                 val error = latestWriteError?.get()
                 if (error != null) {
                     Log.e("be.chvp.nanoledger", "Exception while writing file", error)
-                    Toast.makeText(
-                        context,
-                        writeErrorMessage,
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    Toast
+                        .makeText(
+                            context,
+                            writeErrorMessage,
+                            Toast.LENGTH_LONG,
+                        ).show()
                 }
             }
 
@@ -119,11 +122,12 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(latestMismatch) {
                 val error = latestMismatch?.get()
                 if (error != null) {
-                    Toast.makeText(
-                        context,
-                        mismatchMessage,
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    Toast
+                        .makeText(
+                            context,
+                            mismatchMessage,
+                            Toast.LENGTH_LONG,
+                        ).show()
                 }
             }
 
@@ -156,6 +160,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     },
+                    modifier = Modifier.imePadding(),
                 ) { contentPadding ->
                     if (fileUri != null) {
                         MainContent(contentPadding)
@@ -182,13 +187,15 @@ class MainActivity : ComponentActivity() {
                                     ),
                                 textAlign = TextAlign.Center,
                                 modifier =
-                                    Modifier.align(Alignment.CenterHorizontally).padding(
-                                        horizontal = 16.dp,
-                                    ).clickable {
-                                        startActivity(
-                                            Intent(this@MainActivity, PreferencesActivity::class.java),
-                                        )
-                                    },
+                                    Modifier
+                                        .align(Alignment.CenterHorizontally)
+                                        .padding(
+                                            horizontal = 16.dp,
+                                        ).clickable {
+                                            startActivity(
+                                                Intent(this@MainActivity, PreferencesActivity::class.java),
+                                            )
+                                        },
                             )
                         }
                     }
@@ -395,7 +402,7 @@ fun SearchBar(mainViewModel: MainViewModel = viewModel()) {
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
                     ),
-                modifier = Modifier.fillMaxSize().focusRequester(focusRequester),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).testTag("search-field"),
                 keyboardActions =
                     KeyboardActions(
                         onDone = {

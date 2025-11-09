@@ -9,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
@@ -29,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import be.chvp.nanoledger.R
@@ -42,15 +44,15 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class AddActivity() : ComponentActivity() {
+class AddActivity : ComponentActivity() {
     private val addViewModel: AddViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        if (getIntent().hasExtra(TRANSACTION_INDEX_KEY)) {
-            val transactionIndex = getIntent().getIntExtra(TRANSACTION_INDEX_KEY, 0)
+        if (intent.hasExtra(TRANSACTION_INDEX_KEY)) {
+            val transactionIndex = intent.getIntExtra(TRANSACTION_INDEX_KEY, 0)
             addViewModel.loadTransactionFromIndex(transactionIndex)
         }
 
@@ -107,6 +109,7 @@ class AddActivity() : ComponentActivity() {
                             }
                         }
                     },
+                    modifier = Modifier.imePadding(),
                 ) { contentPadding ->
                     TransactionForm(addViewModel, contentPadding, snackbarHostState)
                 }

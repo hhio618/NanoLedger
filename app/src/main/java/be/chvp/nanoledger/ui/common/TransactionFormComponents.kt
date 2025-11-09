@@ -20,11 +20,11 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -50,11 +50,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import be.chvp.nanoledger.R
+import be.chvp.nanoledger.data.Posting
 import kotlinx.coroutines.launch
 
-val TRANSACTION_INDEX_KEY = "transaction_index"
+const val TRANSACTION_INDEX_KEY = "transaction_index"
 
 @Composable
 fun TransactionForm(
@@ -95,11 +95,12 @@ fun TransactionForm(
     LaunchedEffect(latestMismatch) {
         val error = latestMismatch?.get()
         if (error != null) {
-            Toast.makeText(
-                context,
-                mismatchMessage,
-                Toast.LENGTH_LONG,
-            ).show()
+            Toast
+                .makeText(
+                    context,
+                    mismatchMessage,
+                    Toast.LENGTH_LONG,
+                ).show()
         }
     }
 
@@ -140,11 +141,11 @@ fun TransactionForm(
                 )
             }
             val postings by viewModel.postings.observeAsState()
-            var encounteredEmptyAmount = false
             postings?.forEachIndexed { i, posting ->
-                val firstEmpty = encounteredEmptyAmount == false && posting.third == ""
-                encounteredEmptyAmount = encounteredEmptyAmount || firstEmpty
-                PostingRow(i, posting, firstEmpty, viewModel)
+                // do not show notes rows in the UI
+                if (!posting.isNote() || i == postings!!.size - 1) {
+                    PostingRow(i, posting, posting.isEmpty(), viewModel)
+                }
             }
         }
     }
@@ -178,7 +179,7 @@ fun DateSelector(
             },
     )
     if (dateDialogOpen) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date?.getTime())
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date?.time)
         DatePickerDialog(
             onDismissRequest = { dateDialogOpen = false },
             confirmButton = {
@@ -213,7 +214,7 @@ fun StatusSelector(
             value = (status ?: ""),
             onValueChange = {},
             readOnly = true,
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable),
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
             colors =
                 ExposedDropdownMenuDefaults.textFieldColors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -273,15 +274,15 @@ fun NoteSelector(
 @Composable
 fun PostingRow(
     index: Int,
-    posting: Triple<String, String, String>,
-    firstEmptyAmount: Boolean,
+    posting: Posting,
+    showAmountHint: Boolean,
     viewModel: TransactionFormViewModel,
 ) {
     val currencyBeforeAmount by viewModel.currencyBeforeAmount.observeAsState()
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 2.dp)) {
         AccountSelector(
             index = index,
-            value = posting.first,
+            value = posting.account ?: "",
             viewModel,
             modifier = Modifier.weight(2.2f).padding(horizontal = 2.dp),
         )
@@ -290,7 +291,7 @@ fun PostingRow(
             AmountField(
                 index,
                 posting,
-                firstEmptyAmount,
+                showAmountHint,
                 viewModel,
                 Modifier.weight(1.25f).padding(horizontal = 2.dp),
             )
@@ -298,7 +299,7 @@ fun PostingRow(
             AmountField(
                 index,
                 posting,
-                firstEmptyAmount,
+                showAmountHint,
                 viewModel,
                 Modifier.weight(1.25f).padding(horizontal = 2.dp),
             )
@@ -310,12 +311,12 @@ fun PostingRow(
 @Composable
 fun CurrencyField(
     index: Int,
-    posting: Triple<String, String, String>,
+    posting: Posting,
     viewModel: TransactionFormViewModel,
     modifier: Modifier = Modifier,
 ) {
     TextField(
-        value = posting.second,
+        value = posting.amount?.currency ?: "",
         onValueChange = { viewModel.setCurrency(index, it) },
         singleLine = true,
         modifier = modifier,
@@ -331,14 +332,14 @@ fun CurrencyField(
 @Composable
 fun AmountField(
     index: Int,
-    posting: Triple<String, String, String>,
-    firstEmptyAmount: Boolean,
+    posting: Posting,
+    showAmountHint: Boolean,
     viewModel: TransactionFormViewModel,
     modifier: Modifier = Modifier,
 ) {
     val unbalancedAmount by viewModel.unbalancedAmount.observeAsState()
     TextField(
-        value = posting.third,
+        value = posting.amount?.quantity ?: "",
         onValueChange = { viewModel.setAmount(index, it) },
         singleLine = true,
         colors =
@@ -347,7 +348,7 @@ fun AmountField(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             ),
         placeholder = {
-            if (firstEmptyAmount && unbalancedAmount != null) {
+            if (showAmountHint && unbalancedAmount != null) {
                 Text(
                     unbalancedAmount!!,
                     textAlign = TextAlign.Center,
@@ -400,7 +401,7 @@ fun OutlinedLooseDropdown(
             singleLine = true,
             label = content,
             modifier =
-                Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth().onFocusChanged {
+                Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth().onFocusChanged {
                     if (!it.hasFocus) {
                         expanded = false
                     }
@@ -458,7 +459,7 @@ fun LooseDropdown(
             },
             singleLine = true,
             modifier =
-                Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth().onFocusChanged {
+                Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth().onFocusChanged {
                     if (!it.hasFocus) {
                         expanded = false
                     }
@@ -495,6 +496,4 @@ fun LooseDropdown(
 fun shouldShowDropdown(
     options: List<String>,
     currentValue: String,
-): Boolean {
-    return options.size > 1 || (options.size == 1 && options[0] != currentValue)
-}
+): Boolean = options.size > 1 || (options.size == 1 && options[0] != currentValue)

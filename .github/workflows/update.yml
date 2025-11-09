@@ -9,12 +9,12 @@ jobs:
   shell:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v30
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
         with:
           github_access_token: '${{ secrets.GITHUB_TOKEN }}'
       - name: Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v16
         with:
           name: nanoledger
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -22,6 +22,6 @@ jobs:
       - run: nix flake update
       - run: nix build -L --no-link .#devShells.$(nix eval --impure --expr "builtins.currentSystem").nanoledger
       - run: nix eval --json ".#devShells.$(nix eval --impure --expr 'builtins.currentSystem').nanoledger.outPath" | sed 's/"\(.*\)"/\1/' | cachix push nanoledger
-      - uses: stefanzweifel/git-auto-commit-action@v5.0.1
+      - uses: stefanzweifel/git-auto-commit-action@v7.0.0
         with:
           commit_message: "Update flake dependencies"

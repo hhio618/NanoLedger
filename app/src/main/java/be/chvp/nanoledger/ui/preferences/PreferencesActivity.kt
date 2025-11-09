@@ -12,20 +12,22 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,13 +45,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import be.chvp.nanoledger.R
 import be.chvp.nanoledger.ui.theme.NanoLedgerTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class PreferencesActivity() : ComponentActivity() {
+class PreferencesActivity : ComponentActivity() {
     private val preferencesViewModel: PreferencesViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,7 +61,7 @@ class PreferencesActivity() : ComponentActivity() {
         val openFile =
             registerForActivityResult(OpenDocument()) { uri: Uri? ->
                 if (uri != null) {
-                    getContentResolver().takePersistableUriPermission(
+                    contentResolver.takePersistableUriPermission(
                         uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                     )
@@ -87,8 +90,18 @@ class PreferencesActivity() : ComponentActivity() {
                     true to stringResource(R.string.currency_order_before),
                     false to stringResource(R.string.currency_order_after),
                 )
+            val currencySpacingMap =
+                mapOf(
+                    true to stringResource(R.string.currency_amount_spacing_on),
+                    false to stringResource(R.string.currency_amount_spacing_off),
+                )
+            val separatorMap =
+                mapOf(
+                    "." to stringResource(R.string.separator_point),
+                    "," to stringResource(R.string.separator_comma),
+                )
             NanoLedgerTheme {
-                Scaffold(topBar = { Bar() }) { contentPadding ->
+                Scaffold(topBar = { Bar() }, modifier = Modifier.imePadding()) { contentPadding ->
                     Column(
                         modifier =
                             Modifier
@@ -130,6 +143,26 @@ class PreferencesActivity() : ComponentActivity() {
                             OutlinedTextField(newDefaultCurrency, { newDefaultCurrency = it })
                         }
                         HorizontalDivider()
+                        val postingWidth by preferencesViewModel.postingWidth.observeAsState()
+                        var newPostingWidth by remember { mutableStateOf("${postingWidth ?: 72}") }
+                        var postingWidthOpen by remember { mutableStateOf(false) }
+                        Setting(stringResource(R.string.posting_width), "${postingWidth ?: 72}") {
+                            postingWidthOpen = true
+                        }
+                        SettingDialog(postingWidthOpen, stringResource(R.string.change_posting_width), true, {
+                            preferencesViewModel.storePostingWidth(Integer.parseInt(newPostingWidth))
+                        }, { postingWidthOpen = false }) {
+                            OutlinedTextField(
+                                newPostingWidth,
+                                {
+                                    if (it.isEmpty() || it.matches(Regex("^\\d+$"))) {
+                                        newPostingWidth = it
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            )
+                        }
+                        HorizontalDivider()
                         val defaultStatus by preferencesViewModel.defaultStatus.observeAsState()
                         var expandedStatus by rememberSaveable { mutableStateOf(false) }
                         ExposedDropdownMenuBox(
@@ -142,7 +175,7 @@ class PreferencesActivity() : ComponentActivity() {
                                 statusMap[defaultStatus ?: " "] ?: stringResource(
                                     R.string.status_unmarked,
                                 ),
-                                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable),
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                             ) { expandedStatus = true }
                             ExposedDropdownMenu(
                                 expanded = expandedStatus,
@@ -155,6 +188,39 @@ class PreferencesActivity() : ComponentActivity() {
                                         onClick = {
                                             preferencesViewModel.storeDefaultStatus(it.key)
                                             expandedStatus = false
+                                        },
+                                        contentPadding =
+                                            ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    )
+                                }
+                            }
+                        }
+                        HorizontalDivider()
+                        val decimalSeparator by preferencesViewModel.decimalSeparator.observeAsState()
+                        var expandedSeparator by rememberSaveable { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = expandedSeparator,
+                            onExpandedChange = { expandedSeparator = !expandedSeparator },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Setting(
+                                stringResource(R.string.decimal_separator),
+                                separatorMap[decimalSeparator ?: "."] ?: stringResource(
+                                    R.string.separator_point,
+                                ),
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                            ) { expandedSeparator = true }
+                            ExposedDropdownMenu(
+                                expanded = expandedSeparator,
+                                onDismissRequest = { expandedSeparator = false },
+                                modifier = Modifier.exposedDropdownSize(true),
+                            ) {
+                                separatorMap.forEach {
+                                    DropdownMenuItem(
+                                        text = { Text(it.value) },
+                                        onClick = {
+                                            preferencesViewModel.storeDecimalSeparator(it.key)
+                                            expandedSeparator = false
                                         },
                                         contentPadding =
                                             ExposedDropdownMenuDefaults.ItemContentPadding,
@@ -176,7 +242,7 @@ class PreferencesActivity() : ComponentActivity() {
                                 currencyOrderMap[currencyBeforeAmount ?: true] ?: stringResource(
                                     R.string.currency_order_before,
                                 ),
-                                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable),
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                             ) { expandedCurrency = true }
                             ExposedDropdownMenu(
                                 expanded = expandedCurrency,
@@ -189,6 +255,39 @@ class PreferencesActivity() : ComponentActivity() {
                                         onClick = {
                                             preferencesViewModel.storeCurrencyBeforeAmount(it.key)
                                             expandedCurrency = false
+                                        },
+                                        contentPadding =
+                                            ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    )
+                                }
+                            }
+                        }
+                        HorizontalDivider()
+                        val currencyAmountSpacing by preferencesViewModel.spacingBetweenCurrencyAndAmount.observeAsState()
+                        var expandedCurrencySpacing by rememberSaveable { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = expandedCurrencySpacing,
+                            onExpandedChange = { expandedCurrencySpacing = !expandedCurrencySpacing },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Setting(
+                                stringResource(R.string.currency_amount_spacing),
+                                currencySpacingMap[currencyAmountSpacing ?: true] ?: stringResource(
+                                    R.string.currency_amount_spacing_on,
+                                ),
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                            ) { expandedCurrencySpacing = true }
+                            ExposedDropdownMenu(
+                                expanded = expandedCurrencySpacing,
+                                onDismissRequest = { expandedCurrencySpacing = false },
+                                modifier = Modifier.exposedDropdownSize(true),
+                            ) {
+                                currencySpacingMap.forEach {
+                                    DropdownMenuItem(
+                                        text = { Text(it.value) },
+                                        onClick = {
+                                            preferencesViewModel.storeCurrencyAmountSpacing(it.key)
+                                            expandedCurrencySpacing = false
                                         },
                                         contentPadding =
                                             ExposedDropdownMenuDefaults.ItemContentPadding,

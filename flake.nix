@@ -13,12 +13,12 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; config = { android_sdk.accept_license = true; allowUnfree = true; }; overlays = [ devshell.overlays.default ]; };
-        buildToolsVersion = "34.0.0";
+        buildToolsVersion = "36.0.0";
         composed = pkgs.androidenv.composeAndroidPackages {
-          buildToolsVersions = [ buildToolsVersion ];
-          platformVersions = [ "35" ];
+          buildToolsVersions = [ "35.0.0" buildToolsVersion ];
+          platformVersions = [ "36" ];
         };
-        fhsEnv = pkgs.buildFHSUserEnv {
+        fhsEnv = pkgs.buildFHSEnv {
           name = "android-sdk-env";
           targetPkgs = pkgs: (with pkgs; [ glibc ]);
           profile = ''
@@ -31,12 +31,23 @@
           default = nanoledger;
           nanoledger = pkgs.devshell.mkShell {
             name = "Nanoledger";
-            packages = [ pkgs.jdk17 pkgs.kotlin-language-server pkgs.nixpkgs-fmt ];
+            packages = [ pkgs.jdk17 pkgs.nixpkgs-fmt ];
             env = [
               { name = "ANDROID_SDK_ROOT"; eval = "${composed.androidsdk}/libexec/android-sdk/"; }
               { name = "BUILD_TOOLS_PATH"; eval = "$ANDROID_SDK_ROOT/build-tools/${buildToolsVersion}"; }
               { name = "APK_DIR"; eval = "$PRJ_ROOT/app/build/outputs/apk/release"; }
             ];
+            devshell = {
+              motd = "";
+              startup = {
+                # Hack to get the nix-managed SDK in android studio
+                "link-devshell-dir".text = ''
+                  mkdir -p $PRJ_DATA_DIR
+                  ln -snf $DEVSHELL_DIR $PRJ_DATA_DIR/devshell
+                  ln -snf ${composed.androidsdk}/libexec/android-sdk/ $PRJ_DATA_DIR/sdk
+                '';
+              };
+            };
             commands = [
               {
                 name = "gradle";
