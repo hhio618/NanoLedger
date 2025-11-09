@@ -1,3 +1,5 @@
+.PHONY: all clean test ledger ship
+
 # Default goal for "make"
 .DEFAULT_GOAL = ledger
 
@@ -46,4 +48,7 @@ $(AAR_PATH):
 	@mkdir -p $(@D)
 	@gomobile bind -target=android -o $(AAR_PATH) .
 	@touch $@
+
+ship:
+	@cp $(AAR_PATH) ../app/libs
 
